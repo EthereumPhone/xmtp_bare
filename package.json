@@ -1,0 +1,16 @@
+{
+  "name": "xmtp_bare",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@xmtp/xmtp-js": "^6.0.3",
+    "browser-resolve": "^2.0.0",
+    "esmify": "^2.1.1"
+  }
+}
