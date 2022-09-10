@@ -11,6 +11,7 @@
   "dependencies": {
     "@xmtp/xmtp-js": "^6.0.3",
     "browser-resolve": "^2.0.0",
-    "esmify": "^2.1.1"
+    "esmify": "^2.1.1",
+    "text-encoding": "^0.7.0"
   }
 }
