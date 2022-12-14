@@ -1,5 +1,6 @@
 const { Client } = require('@xmtp/xmtp-js')
-const { Wallet, Signer } = require('ethers')
+const { Wallet, Signer, utils } = require('ethers')
+const Buffer = require('buffer/').Buffer
 let wallet;
 let xmtp;
 
@@ -13,8 +14,6 @@ const getMethods = (obj) => {
 }
 
 const fromHexString = (hexString) => Uint8Array.from(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
-
-const getType = obj => Object.prototype.toString.call(obj);
 
 class AndroidSigner extends Signer {
 
@@ -48,78 +47,84 @@ class AndroidSigner extends Signer {
 
 var WHAT = "%WHICH_FUNCTION%";
 
-function toHexString(byteArray) {
-    return Array.from(byteArray, function(byte) {
-      return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-    }).join('')
-  }
-  
+function equalArray(buf1, buf2) {
+    if (buf1.byteLength != buf2.byteLength) return false;
+    var dv1 = new Int8Array(buf1);
+    var dv2 = new Int8Array(buf2);
+    for (var i = 0; i != buf1.byteLength; i++) {
+        if (dv1[i] != dv2[i]) return false;
+    }
+    return true;
+}
+
+function objToString (obj) {
+    var str = '';
+    for (var p in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, p)) {
+            str += p + '::' + obj[p] + '\n';
+        }
+    }
+    return str;
+}
+
+
 const signer = new AndroidSigner();
 
 async function getMessages(target, msg) {
     // Create the client with your wallet. This will connect to the XMTP development network by default  
 
-    console.log(WHAT + ": ", getMethods(signer))
-    console.log("ANDROID: ", getMethods(window.AndroidSigner))
+    var address = await signer.getAddress();
 
-    var address = signer.getAddress();
+    const hash = "%HASH%"
 
-    console.log("My precious address (" + WHAT + "): ", JSON.stringify(address), address === undefined)
-    /** 
     const getKeyResult = await window.AndroidSigner.getKey()
     if (getKeyResult === "null") {
         const keys = await Client.getKeys(signer)
-        window.AndroidSigner.receiveKey(new TextDecoder().decode(keys))
-        xmtp = await Client.create(null, { privateKeyOverride: keys })
+        window.AndroidSigner.receiveKey(Buffer.from(keys).toString('binary'))
+        xmtp = await Client.create(null, {
+            privateKeyOverride: keys,
+            env: "production"
+        })
     } else {
         try {
-            xmtp = await Client.create(null, { privateKeyOverride: new TextEncoder().encode(getKeyResult) })
-        } catch(e) {
+            xmtp = await Client.create(null, {
+                privateKeyOverride: Buffer.from(getKeyResult, 'binary'),
+                env: "production"
+            })
+        } catch (e) {
             console.log(e.stack)
         }
     }
-    */
-    const getKeyResult = await window.AndroidSigner.getKey()
-    if (getKeyResult === "null") {
-        const keys = await Client.getKeys(signer)
-        window.AndroidSigner.receiveKey(toHexString(keys))
-        xmtp = await Client.create(null, { privateKeyOverride: keys })
-      } else {
-        try {
-            xmtp = await Client.create(null, { privateKeyOverride: fromHexString(getKeyResult) })
-        } catch(e) {
-            console.log(e.stack)
-        }
-      }
 
-    console.log("Finished creating xmtp_client")
-    
     const conversation = await xmtp.conversations.newConversation(target)
 
-    console.log("Finished creating conversation")
-
     if (WHAT === "getMessages") {
+        console.log("gettingMessages executing")
         output = []
-
-        console.log("Get_message address is: " + address)
-
         const messages = await conversation.messages()
-
-        for (const message of messages) {
-            output.push(message.content)
+        console.log("got Messages ", messages)
+        for (var message of messages) {
+            try {
+                var newMessage = {}
+                console.log(objToString(message))
+                newMessage["senderAddress"] = message.senderAddress
+                newMessage["content"] = message.content
+                output.push(newMessage)
+            } catch(e) {
+                var errorMsg = {};
+                errorMsg["error"] = e;
+                console.log("Error: ", e)
+            }
+            
         }
 
-        if (window.Android) {
-            window.Android.shareMessages(JSON.stringify(output))
-        }
+        window.Android.shareMessages(hash, JSON.stringify(output))
+        console.log("shared Messages back")
+
     }
     if (WHAT === "sendMessage") {
-        console.log("Executing sendMessage if")
-            // Send a message
-        const receipt = await conversation.send(msg)
-
-        console.log("Sending", JSON.stringify(receipt), "from", address)
-
+        // Send a message
+        const receipt = await conversation.send(atob(msg))
         if (window.Android) {
             window.Android.sentMessage("%hash%")
         }

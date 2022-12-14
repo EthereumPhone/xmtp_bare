@@ -44,10 +44,10 @@ class AndroidSigner extends Signer {
 const signer = new AndroidSigner();
 
 function toHexString(byteArray) {
-    return Array.from(byteArray, function(byte) {
-      return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+    return Array.from(byteArray, function (byte) {
+        return ('0' + (byte & 0xFF).toString(16)).slice(-2);
     }).join('')
-  }
+}
 
 const fromHexString = (hexString) => Uint8Array.from(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
 
@@ -57,21 +57,26 @@ async function listenMessages(target) {
     const getKeyResult = await window.AndroidSigner.getKey()
     if (getKeyResult === "null") {
         const keys = await Client.getKeys(signer)
-        window.AndroidSigner.receiveKey(toHexString(keys))
-        xmtp = await Client.create(null, { privateKeyOverride: keys })
-      } else {
+        window.AndroidSigner.receiveKey(Buffer.from(keys).toString('binary'))
+        xmtp = await Client.create(null, { 
+            privateKeyOverride: keys,
+            env: "production"
+        })
+    } else {
         try {
-            xmtp = await Client.create(null, { privateKeyOverride: fromHexString(getKeyResult) })
-        } catch(e) {
+            xmtp = await Client.create(null, { 
+                privateKeyOverride: Buffer.from(getKeyResult, 'binary'),
+                env: "production"
+            })
+        } catch (e) {
             console.log(e.stack)
         }
-      }
+    }
 
 
     const conversation = await xmtp.conversations.newConversation(target)
 
     for await (const message of await conversation.streamMessages()) {
-        console.log(`[${message.senderAddress}]: ${message.content}`)
         window.Android.listenNewMessage(target, message.senderAddress, message.content)
     }
 
