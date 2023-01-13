@@ -45,15 +45,20 @@ function toHexString(byteArray) {
 async function init() {
   try{
     const getKeyResult = await window.AndroidSigner.getKey()
+    console.log("GET KEY RESULT: " + getKeyResult)
     if (getKeyResult === "null") {
-      const keys = await Client.getKeys(signer)
+      console.log("No key found, creating new key")
+      const keys = await Client.getKeys(signer, {env: "production"})
+      console.log("Keys: " + keys)
       window.AndroidSigner.receiveKey(Buffer.from(keys).toString('binary'))
+      console.log("Received key: ")
       xmtp = await Client.create(null, { 
         privateKeyOverride: keys,
         env: "production"
       })
       console.log("My xmtp address:" + xmtp.address)
     } else {
+      console.log("Key found, using existing key")
       try {
         xmtp = await Client.create(null, { 
           privateKeyOverride: Buffer.from(getKeyResult, 'binary'),

@@ -56,7 +56,7 @@ async function listenMessages(target) {
     var address = await signer.getAddress();
     const getKeyResult = await window.AndroidSigner.getKey()
     if (getKeyResult === "null") {
-        const keys = await Client.getKeys(signer)
+        const keys = await Client.getKeys(signer, {env: "production"})
         window.AndroidSigner.receiveKey(Buffer.from(keys).toString('binary'))
         xmtp = await Client.create(null, { 
             privateKeyOverride: keys,
